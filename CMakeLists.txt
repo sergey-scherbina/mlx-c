@@ -35,7 +35,12 @@ else()
   FetchContent_Declare(
     mlx
     GIT_REPOSITORY "https://github.com/ml-explore/mlx.git"
-    GIT_TAG v0.30.6)
+    GIT_TAG v0.30.6
+    # ROZUM: env-gated retained command-buffer references (fixes the GatedDeltaNet
+    # custom-kernel premature-free; the hybrid backend sets ROZUM_MLX_RETAIN).
+    # Idempotent: skip if already applied.
+    PATCH_COMMAND sh -c
+      "git apply --reverse --check '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-retain-command-buffer.patch' 2>/dev/null || git apply '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-retain-command-buffer.patch'")
   FetchContent_MakeAvailable(mlx)
 endif()
 

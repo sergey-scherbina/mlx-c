@@ -1,0 +1,23 @@
+diff --git a/mlx/backend/metal/device.cpp b/mlx/backend/metal/device.cpp
+index de61b0f2..8268d083 100644
+--- a/mlx/backend/metal/device.cpp
++++ b/mlx/backend/metal/device.cpp
+@@ -389,7 +389,17 @@ bool Device::command_buffer_needs_commit(int index) {
+ MTL::CommandBuffer* Device::get_command_buffer(int index) {
+   auto& stream = get_stream_(index);
+   if (stream.buffer == nullptr) {
+-    stream.buffer = stream.queue->commandBufferWithUnretainedReferences();
++    // ROZUM patch (env-gated, default OFF): when ROZUM_MLX_RETAIN is set, create the
++    // command buffer with RETAINED references so Metal keeps the referenced buffers
++    // alive until completion. This fixes a premature-free of a buffer feeding the
++    // GatedDeltaNet custom metal_kernel in large Qwen3.6 graphs (garbage from token
++    // 2), letting the hybrid backend drop its ~48 per-call evals/token. The rozum
++    // native backend sets the env only for hybrid (qwen3_5/qwen3_5_moe) models, so
++    // dense models keep the faster unretained path.
++    const bool rozum_mlx_retain = (std::getenv("ROZUM_MLX_RETAIN") != nullptr);
++    stream.buffer = rozum_mlx_retain
++        ? stream.queue->commandBuffer()
++        : stream.queue->commandBufferWithUnretainedReferences();
+     if (!stream.buffer) {
+       throw std::runtime_error(
+           "[metal::Device] Unable to create new command buffer");
