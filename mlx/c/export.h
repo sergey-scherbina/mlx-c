@@ -24,6 +24,8 @@ extern "C" {
  * \defgroup export Function serialization
  */
 /**@{*/
+/** rozum: dump the DAG of `outputs` to `file` in Graphviz DOT (perf debugging). */
+int mlx_export_to_dot(const char* file, const mlx_vector_array outputs);
 int mlx_export_function(
     const char* file,
     const mlx_closure fun,

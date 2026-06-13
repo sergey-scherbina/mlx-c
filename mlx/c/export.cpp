@@ -2,7 +2,22 @@
 #include "mlx/c/error.h"
 #include "mlx/c/private/mlx.h"
 #include "mlx/export.h"
+#include "mlx/graph_utils.h"
 
+#include <fstream>
+
+extern "C" int mlx_export_to_dot(
+    const char* file,
+    const mlx_vector_array outputs) {
+  try {
+    std::ofstream os(file);
+    mlx::core::export_to_dot(os, mlx_vector_array_get_(outputs));
+  } catch (std::exception& e) {
+    mlx_error(e.what());
+    return 1;
+  }
+  return 0;
+}
 extern "C" int mlx_export_function(
     const char* file,
     const mlx_closure fun,
