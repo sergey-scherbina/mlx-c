@@ -36,11 +36,15 @@ else()
     mlx
     GIT_REPOSITORY "https://github.com/ml-explore/mlx.git"
     GIT_TAG v0.31.2
-    # ROZUM: env-gated retained command-buffer references (fixes the GatedDeltaNet
-    # custom-kernel premature-free; the hybrid backend sets ROZUM_MLX_RETAIN).
-    # Idempotent: skip if already applied.
+    # ROZUM patches, applied in order (each idempotent: skip if already applied):
+    #  1. mlx-retain-command-buffer: env-gated retained command-buffer references
+    #     (fixes the GatedDeltaNet custom-kernel premature-free; ROZUM_MLX_RETAIN).
+    #  2. mlx-stream-encoder-selfheal: lazily register a stream's thread_local metal
+    #     command encoder on the current thread instead of throwing — fixes the
+    #     in-process model-swap "There is no Stream(gpu, N) in current thread." crash
+    #     (a new model's worker thread inheriting a prior worker's stream-bound arrays).
     PATCH_COMMAND sh -c
-      "git apply --reverse --check '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-retain-command-buffer.patch' 2>/dev/null || git apply '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-retain-command-buffer.patch'")
+      "(git apply --reverse --check '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-retain-command-buffer.patch' 2>/dev/null || git apply '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-retain-command-buffer.patch') && (git apply --reverse --check '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-stream-encoder-selfheal.patch' 2>/dev/null || git apply '${CMAKE_CURRENT_LIST_DIR}/patches/mlx-stream-encoder-selfheal.patch')")
   FetchContent_MakeAvailable(mlx)
 endif()
 

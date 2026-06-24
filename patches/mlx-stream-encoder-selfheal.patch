@@ -1,0 +1,26 @@
+diff --git a/mlx/backend/metal/device.cpp b/mlx/backend/metal/device.cpp
+index 729c1d52..db102ef4 100644
+--- a/mlx/backend/metal/device.cpp
++++ b/mlx/backend/metal/device.cpp
+@@ -816,8 +816,19 @@ CommandEncoder& get_command_encoder(Stream s) {
+   auto& encoders = get_command_encoders();
+   auto it = encoders.find(s.index);
+   if (it == encoders.end()) {
+-    throw std::runtime_error(
+-        fmt::format("There is no Stream(gpu, {}) in current thread.", s.index));
++    // ROZUM self-heal: the command-encoder map is thread_local and a stream's encoder is
++    // registered (in gpu::new_stream) only on the thread that created the stream. When an
++    // array bound to that stream is evaluated on a DIFFERENT thread (rozum tears down a
++    // model's worker thread and runs the next model on a fresh thread that inherits the
++    // prior worker's stream-bound arrays), the lookup missed and this threw "There is no
++    // Stream(gpu, N) in current thread.", failing the first decode after an in-process
++    // model swap. Register an encoder on the current thread instead so eval proceeds.
++    fprintf(
++        stderr,
++        "[mlx self-heal] registered command encoder for Stream(gpu, %d) on this thread\n",
++        s.index);
++    auto& d = device(s.device);
++    it = encoders.try_emplace(s.index, d, s.index, d.residency_set()).first;
+   }
+   return it->second;
+ }
